@@ -12,30 +12,43 @@ use ring::{
 fn main() {
     setup_panic!();
 
+    // Have some data and a passphrase. I'd like to use the passphrase to encrypt my data.
     let passphrase = "my secret passphrase";
     let mut data = b"hello, this is my secret message".to_vec();
+
+    // Keep track of what the original unencrypted data was.
     let original_data = data.clone();
 
+    // Create a nonce to use for the algorithms.
     let mut nonce_data = [0; 12];
     SystemRandom::new().fill(&mut nonce_data).unwrap();
-    let key = derive_key_from_passphrase(passphrase, &nonce_data);
 
+    // Generate a key from your passphrase. This key is used to encrypt and decrypt the data.
+    let key = derive_key(passphrase, &nonce_data);
     let key = UnboundKey::new(&CHACHA20_POLY1305, &key).unwrap();
     let key = LessSafeKey::new(key);
 
-    let nonce = Nonce::assume_unique_for_key(nonce_data);
-    key.seal_in_place_append_tag(nonce, Aad::empty(), &mut data)
+    // Generate nonces for the operations.
+    let encrypt_nonce = Nonce::assume_unique_for_key(nonce_data);
+    let decrypt_nonce = Nonce::assume_unique_for_key(nonce_data);
+
+    // Encrypt the data.
+    key.seal_in_place_append_tag(encrypt_nonce, Aad::empty(), &mut data)
         .unwrap();
 
+    // Check if the data changed.
     assert_ne!(original_data, data);
 
-    let nonce = Nonce::assume_unique_for_key(nonce_data);
-    let data = key.open_in_place(nonce, Aad::empty(), &mut data).unwrap();
+    // Decrypt the encrypted data.
+    let data = key
+        .open_in_place(decrypt_nonce, Aad::empty(), &mut data)
+        .unwrap();
 
+    // Check if the decrypted data is the same as the original.
     assert_eq!(original_data, data);
 }
 
-fn derive_key_from_passphrase(passphrase: &str, salt: &[u8]) -> [u8; 32] {
+fn derive_key(passphrase: &str, salt: &[u8]) -> [u8; 32] {
     let mut key = [0u8; 32];
     let iterations = 100_000;
 
