@@ -2,9 +2,12 @@
 
 use std::num::NonZeroU32;
 
-use ring::{aead::*, rand::{SecureRandom, SystemRandom}, pbkdf2};
 use human_panic::setup_panic;
-
+use ring::{
+    aead::*,
+    pbkdf2,
+    rand::{SecureRandom, SystemRandom},
+};
 
 fn main() {
     setup_panic!();
@@ -13,10 +16,9 @@ fn main() {
     let mut data = b"hello, this is my secret message".to_vec();
     let original_data = data.clone();
 
-    let salt = [0; 16];
-    let key = derive_key_from_passphrase(passphrase, &salt);
     let mut nonce_data = [0; 12];
     SystemRandom::new().fill(&mut nonce_data).unwrap();
+    let key = derive_key_from_passphrase(passphrase, &nonce_data);
 
     let key = UnboundKey::new(&CHACHA20_POLY1305, &key).unwrap();
     let key = LessSafeKey::new(key);
