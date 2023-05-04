@@ -5,5 +5,4 @@ edition = "2021"
 
 [dependencies]
 human-panic = "1.1.4"
-rand = "0.8.5"
 ring = "0.16.20"
